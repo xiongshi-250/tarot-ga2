@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>火影忍者：忍者联军 vs 白绝大军</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #0d1b2a 100%);
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        
+        #gameContainer {
+            position: relative;
+            box-shadow: 0 0 60px rgba(255, 140, 0, 0.4), inset 0 0 100px rgba(0,0,0,0.5);
+            border: 3px solid #4a5568;
+            border-radius: 8px;
+            background: #1a202c;
+        }
+        
+        #gameCanvas {
+            display: block;
+            background: linear-gradient(180deg, #2d3748 0%, #1a202c 100%);
+            cursor: crosshair;
+            border-radius: 5px;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .chakra-display {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: linear-gradient(135deg, rgba(0,0,0,0.9), rgba(0,20,40,0.9));
+            border: 2px solid #00d4ff;
+            padding: 12px 25px;
+            border-radius: 12px;
+            color: #00d4ff;
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            pointer-events: auto;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+        
+        .chakra-icon {
+            width: 35px;
+            height: 35px;
+            background: radial-gradient(circle at 30% 30%, #00ffff, #0080ff, #004080);
+            border-radius: 50%;
+            animation: chakraPulse 2s infinite;
+            box-shadow: 0 0 15px #00d4ff;
+            position: relative;
+        }
+        
+        .chakra-icon::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60%;
+            height: 60%;
+            border: 2px solid rgba(255,255,255,0.6);
+            border-radius: 50%;
+            animation: rotate 3s linear infinite;
+        }
+        
+        @keyframes chakraPulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 15px #00d4ff; }
+            50% { transform: scale(1.15); box-shadow: 0 0 25px #00ffff, 0 0 40px #00d4ff; }
+        }
+        
+        @keyframes rotate {
+            from { transform: translate(-50%, -50%) rotate(0deg); }
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        
+        .card-slot {
+            position: absolute;
+            top: 15px;
+            width: 70px;
+            height: 95px;
+            background: linear-gradient(135deg, rgba(20,20,30,0.95), rgba(10,10,20,0.95));
+            border: 2px solid #4a5568;
+            border-radius: 8px;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding-top: 8px;
+            overflow: hidden;
+        }
+        
+        .card-slot::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #ff8c00, transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .card-slot:hover {
+            transform: translateY(-5px) scale(1.05);
+            border-color: #ff8c00;
+            box-shadow: 0 10px 30px rgba(255, 140, 0, 0.4);
+        }
+        
+        .card-slot:hover::before {
+            opacity: 1;
+        }
+        
+        .card-slot.selected {
+            border-color: #00ff88;
+            box-shadow: 0 0 25px rgba(0, 255, 136, 0.6), inset 0 0 20px rgba(0, 255, 136, 0.1);
+            transform: translateY(-3px);
+        }
+        
+        .card-slot.cooldown {
+            opacity: 0.6;
+        }
+        
+        .card-slot.cooldown::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .card-image {
+            width: 50px;
+            height: 50px;
+            image-rendering: pixelated;
+            margin-bottom: 4px;
+        }
+        
+        .card-cost {
+            color: #00d4ff;
+            font-weight: bold;
+            font-size: 14px;
+            text-shadow: 0 0 5px rgba(0, 212, 255, 0.5);
+        }
+        
+        .card-name {
+            color: #a0aec0;
+            font-size: 10px;
+            margin-top: 2px;
+            text-align: center;
+            width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        #startScreen, #gameOverScreen, #victoryScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.92);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        
+        .title {
+            font-size: 56px;
+            color: #ff8c00;
+            text-shadow: 
+                0 0 10px #ff4500,
+                0 0 20px #ff6600,
+                0 0 40px #ff8c00,
+                4px 4px 0px #000;
+            margin-bottom: 10px;
+            animation: titleGlow 3s ease-in-out infinite;
+            letter-spacing: 8px;
+            font-weight: 900;
+        }
+        
+        .subtitle {
+            font-size: 28px;
+            color: #00d4ff;
+            text-shadow: 0 0 15px rgba(0, 212, 255, 0.8);
+            margin-bottom: 40px;
+            letter-spacing: 4px;
+        }
+        
+        @keyframes titleGlow {
+            0%, 100% { 
+                text-shadow: 0 0 10px #ff4500, 0 0 20px #ff6600, 0 0 40px #ff8c00, 4px 4px 0px #000;
+                transform: scale(1);
+            }
+            50% { 
+                text-shadow: 0 0 20px #ff4500, 0 0 40px #ff6600, 0 0 80px #ff8c00, 0 0 120px #ffa500, 4px 4px 0px #000;
+                transform: scale(1.02);
+            }
+        }
+        
+        .btn {
+            padding: 18px 50px;
+            font-size: 26px;
+            background: linear-gradient(135deg, #ff8c00, #ff4500);
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 12px;
+            margin: 15px;
+            transition: all 0.3s;
+            font-family: inherit;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            font-weight: bold;
+            box-shadow: 0 5px 20px rgba(255, 140, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
+            transform: rotate(45deg);
+            transition: all 0.5s;
+            opacity: 0;
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 10px 40px rgba(255, 140, 0, 0.6);
+        }
+        
+        .btn:hover::before {
+            animation: shine 0.5s ease-in-out;
+        }
+        
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); opacity: 0; }
+        }
+        
+        .level-info {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: linear-gradient(135deg, rgba(0,0,0,0.9), rgba(20,0,0,0.9));
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 10px;
+            border: 2px solid #ff8c00;
+            font-size: 16px;
+            box-shadow: 0 0 15px rgba(255, 140, 0, 0.3);
+        }
+        
+        .level-info div {
+            margin: 5px 0;
+            text-shadow: 0 0 5px rgba(255, 140, 0, 0.5);
+        }
+        
+        .hidden { display: none !important; }
+        
+        .damage-text {
+            position: absolute;
+            color: #ff4444;
+            font-weight: bold;
+            font-size: 20px;
+            pointer-events: none;
+            animation: damageFloat 1.2s forwards;
+            text-shadow: 2px 2px 0 #000, 0 0 10px rgba(255,0,0,0.8);
+            z-index: 50;
+        }
+        
+        @keyframes damageFloat {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            50% { transform: translateY(-20px) scale(1.2); }
+            100% { transform: translateY(-40px) scale(0.8); opacity: 0; }
+        }
+        
+        .tutorial {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            padding: 15px 30px;
+            border-radius: 10px;
+            border: 1px solid #00d4ff;
+            color: #e2e8f0;
+            text-align: center;
+            font-size: 14px;
+            max-width: 600px;
+            line-height: 1.6;
+        }
+        
+        .tutorial strong {
+            color: #ff8c00;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="1200" height="700"></canvas>
+        
+        <div id="ui">
+            <div class="chakra-display">
+                <div class="chakra-icon"></div>
+                <span id="chakraAmount">150</span>
+            </div>
+            <div id="cardContainer"></div>
+            <div class="level-info">
+                <div>关卡: <span id="currentLevel">1</span>/5</div>
+                <div>波次: <span id="waveInfo">1</span></div>
+                <div>白绝剩余: <span id="zombieRemaining">5</span></div>
+            </div>
+        </div>
+        
+        <div id="startScreen">
+            <h1 class="title">火影忍者</h1>
+            <h2 class="subtitle">忍者联军 VS 白绝大军</h2>
+            <div style="margin-bottom: 30px; text-align: center; color: #cbd5e0; line-height: 2;">
+                <p>第四次忍界大战爆发！白绝大军正在进攻！</p>
+                <p>召唤忍者联军，守护最后的防线！</p>
+            </div>
+            <button class="btn" onclick="startGame()">开始战斗</button>
+            <div class="tutorial">
+                <strong>操作指南：</strong>点击忍者卡片选择 → 点击草地放置 → 收集掉落的查克拉球<br>
+                <strong>提示：</strong>不同忍者有不同特性，合理搭配阵容是胜利的关键！
+            </div>
+        </div>
+        
+        <div id="gameOverScreen" class="hidden">
+            <h1 style="color: #ff4444; font-size: 56px; margin-bottom: 20px; text-shadow: 0 0 20px rgba(255,0,0,0.8);">防线被突破</h1>
+            <p style="margin-bottom: 30px; font-size: 20px; color: #a0aec0;">白绝大军侵入了木叶村...</p>
+            <button class="btn" onclick="restartGame()">重新挑战</button>
+        </div>
+        
+        <div id="victoryScreen" class="hidden">
+            <h1 style="color: #00ff88; font-size: 56px; margin-bottom: 20px; text-shadow: 0 0 20px rgba(0,255,136,0.8);">胜利！</h1>
+            <p style="margin-bottom: 20px; font-size: 20px; color: #a0aec0;">忍者联军成功守护了世界！</p>
+            <div id="finalStats" style="margin-bottom: 30px; background: rgba(0,0,0,0.5); padding: 20px; border-radius: 10px; border: 1px solid #00ff88;"></div>
+            <button class="btn" onclick="restartGame()">再次挑战</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        
+        // 游戏状态
+        let gameState = 'start';
+        let chakra = 150;
+        let selectedCard = null;
+        let level = 1;
+        let wave = 1;
+        let frameCount = 0;
+        
+        // 游戏对象数组
+        let plants = [];
+        let zombies = [];
+        let projectiles = [];
+        let particles = [];
+        let chakraOrbs = [];
+        let lawnmowers = [];
+        
+        // 关卡配置
+        const levels = [
+            { zombieCount: 5, spawnRate: 350, zombieHealth: 100, zombieSpeed: 0.4 },
+            { zombieCount: 10, spawnRate: 300, zombieHealth: 150, zombieSpeed: 0.45 },
+            { zombieCount: 15, spawnRate: 250, zombieHealth: 220, zombieSpeed: 0.5 },
+            { zombieCount: 22, spawnRate: 200, zombieHealth: 300, zombieSpeed: 0.55 },
+            { zombieCount: 30, spawnRate: 160, zombieHealth: 400, zombieSpeed: 0.6 }
+        ];
+        
+        let zombiesSpawned = 0;
+        let spawnTimer = 0;
+        
+        // 网格设置
+        const COLS = 9;
+        const ROWS = 5;
+        const CELL_WIDTH = 110;
+        const CELL_HEIGHT = 100;
+        const GRID_OFFSET_X = 250;
+        const GRID_OFFSET_Y = 120;
+        
+        // 忍者卡片定义
+        const cards = [
+            {
+                id: 'naruto',
+                name: '鸣人',
+                cost: 50,
+                color: '#ff8c00',
+                type: 'shooter',
+                damage: 25,
+                shootSpeed: 1800,
+                description: '螺旋丸连射'
+            },
+            {
+                id: 'naruto_sage',
+                name: '仙鸣',
+                cost: 125,
+                color: '#ffa500',
+                type: 'double_shooter',
+                damage: 30,
+                shootSpeed: 1600,
+                description: '双重螺旋丸'
+            },
+            {
+                id: 'sakura',
+                name: '小樱',
+                cost: 100,
+                color: '#ff69b4',
+                type: 'wall',
+                health: 400,
+                description: '百豪之术防御'
+            },
+            {
+                id: 'sasuke',
+                name: '佐助',
+                cost: 175,
+                color: '#8b00ff',
+                type: 'shooter',
+                damage: 50,
+                shootSpeed: 1400,
+                projectileType: 'chidori',
+                description: '千鸟锐枪'
+            },
+            {
+                id: 'kakashi',
+                name: '卡卡西',
+                cost: 200,
+                color: '#silver',
+                type: 'shooter',
+                damage: 40,
+                shootSpeed: 1200,
+                aoe: true,
+                description: '雷切·双雷震'
+            },
+            {
+                id: 'lee',
+                name: '小李',
+                cost: 150,
+                color: '#228b22',
+                type: 'melee',
+                damage: 70,
+                attackSpeed: 600,
+                description: '八门遁甲'
+            },
+            {
+                id: 'hinata',
+                name: '雏田',
+                cost: 125,
+                color: '#dda0dd',
+                type: 'shooter',
+                damage: 20,
+                shootSpeed: 900,
+                slow: true,
+                description: '八卦六十四掌'
+            },
+            {
+                id: 'gaara',
+                name: '我爱罗',
+                cost: 225,
+                color: '#daa520',
+                type: 'wall_shooter',
+                health: 350,
+                damage: 45,
+                shootSpeed: 2200,
+                description: '砂瀑大葬'
+            }
+        ];
+        
+        let cardCooldowns = {};
+        
+        // 像素画绘制函数 - 高质量像素艺术
+        function drawPixelCharacter(ctx, x, y, type, frame = 0, direction = 1) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(direction, 1);
+            
+            // 阴影
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(0, 38, 20, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            switch(type) {
+                case 'naruto':
+                    drawNaruto(ctx, frame);
+                    break;
+                case 'naruto_sage':
+                    drawNarutoSage(ctx, frame);
+                    break;
+                case 'sakura':
+                    drawSakura(ctx, frame);
+                    break;
+                case 'sasuke':
+                    drawSasuke(ctx, frame);
+                    break;
+                case 'kakashi':
+                    drawKakashi(ctx, frame);
+                    break;
+                case 'lee':
+                    drawLee(ctx, frame);
+                    break;
+                case 'hinata':
+                    drawHinata(ctx, frame);
+                    break;
+                case 'gaara':
+                    drawGaara(ctx, frame);
+                    break;
+                case 'zombie':
+                    drawZombie(ctx, frame);
+                    break;
+            }
+            
+            ctx.restore();
+        }
+        
+        // 鸣人
+        function drawNaruto(ctx, frame) {
+            const anim = Math.sin(frame * 0.1) * 2;
+            
+            // 身体
+            ctx.fillStyle = '#ff8c00';
+            ctx.fillRect(-15, 5, 30, 28);
+            // 漩涡图案
+            ctx.fillStyle = '#000';
+            ctx.fillRect(-8, 12, 16, 2);
+            ctx.fillRect(-2, 8, 4, 10);
+            
+            // 裤子
+            ctx.fillStyle = '#000080';
+            ctx.fillRect(-15, 33, 30, 8);
+            
+            // 头部
+            ctx.fillStyle = '#ffe4c4';
+            ctx.fillRect(-12, -15, 24, 22);
+            
+            // 头发 (金色刺猬头)
+            ctx.fillStyle = '#ffd700';
+            const hairSpikes = [-14, -10, -6, -2, 2, 6, 10, 14];
+            hairSpikes.forEach((hx, i) => {
+                const height = 8 + Math.sin(frame * 0.2 + i) * 2;
+                ctx.beginPath();
+                ctx.moveTo(hx, -15);
+                ctx.lineTo(hx + 3, -15 - height);
+                ctx.lineTo(hx + 6, -15);
+                ctx.fill();
+            });
+            
+            // 护额
+            ctx.fillStyle = '#2f4f4f';
+            ctx.fillRect(-13, -10, 26, 6);
+            ctx.fillStyle = '#silver';
+            ctx.fillRect(-8, -9, 16, 4);
+            // 木叶标志
+            ctx.fillStyle = '#228b22';
+            ctx.beginPath();
+            ctx.arc(0, -7, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 眼睛
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(-8, -2, 6, 5);
+            ctx.fillRect(2, -2, 6, 5);
+            ctx.fillStyle = '#4169e1';
+            ctx.fillRect(-6, 0, 3, 3);
+            ctx.fillRect(4, 0, 3, 3);
+            
+            // 手臂 (准备结印/发射姿势)
+            const armOffset = Math.sin(frame * 0.15) * 3;
+            ctx.fillStyle = '#ffe4c4';
+            ctx.fillRect(15, 10 + armOffset, 12, 6);
+            ctx.fillRect(25, 8 + armOffset, 8, 8);
+            
+            // 螺旋丸准备特效
+            if (frame % 60 < 30) {
+                const rasenganSize = 6 + Math.sin(frame * 0.3) * 2;
+                const gradient = ctx.createRadialGradient(30, 10 + armOffset, 0, 30, 10 + armOffset, rasenganSize);
+                gradient.addColorStop(0, '#fff');
+                gradient.addColorStop(0.3, '#00ffff');
+                gradient.addColorStop(0.7, '#0080ff');
+                gradient.addColorStop(1, 'transparent');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(30, 10 + armOffset, rasenganSize, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        // 仙人模式鸣人
+        function drawNarutoSage(ctx, frame) {
+            const anim = Math.sin(frame * 0.1) * 2;
+            
+            // 仙术光环
+            const auraGradient = ctx.createRadialGradient(0, 10, 10, 0, 10, 50);
+            auraGradient.addColorStop(0, 'rgba(255, 215, 0, 0.3)');
+            auraGradient.addColorStop(0.5, 'rgba(255, 165, 0, 0.1)');
+            auraGradient.addColorStop(1, 'transparent');
+            ctx.fillStyle = auraGradient;
+            ctx.beginPath();
+            ctx.arc(0, 10, 45 + Math.sin(frame * 0.05) * 5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 身体
+            ctx.fillStyle = '#ff8c00';
+            ctx.fillRect(-16, 5, 32, 28);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(-10, 15, 20, 3);
+            ctx.fillRect(-3, 10, 6, 12);
+            
+            // 裤子
+            ctx.fillStyle = '#000080';
+            ctx.fillRect(-16, 33, 32, 8);
+            
+            // 头部
+            ctx.fillStyle = '#ffe4c4';
+            ctx.fillRect(-13, -15, 26, 22);
+            
+            // 仙人模式眼影 (橙色)
+            ctx.fillStyle = '#ff8c00';
+            ctx.fillRect(-10, -1, 8, 3);
+            ctx.fillRect(2, -1, 8, 3);
+            
+            // 头发 (更亮的金色)
+            ctx.fillStyle = '#fff8dc';
+            const hairSpikes = [-15, -11, -7, -3, 1, 5, 9, 13];
+            hairSpikes.forEach((hx, i) => {
+                const height = 10 + Math.sin(frame * 0.15 + i) * 2;
+                ctx.beginPath();
+                ctx.moveTo(hx, -15);
+                ctx.lineTo(hx + 4, -15 - height);
+                ctx.lineTo(hx + 8, -15);
+                ctx.fill();
+            });
+            
+            // 眼睛 (横瞳)
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(-9, -2, 7, 5);
+            ctx.fillRect(2, -2, 7, 5);
+            ctx.fillStyle = '#ff8c00';
+            ctx.fillRect(-7, 0, 5, 2);
+            ctx.fillRect(3, 0, 5, 2);
+            
+            // 双臂 (双发姿势)
+            ctx.fillStyle = '#ffe4c4';
+            ctx.fillRect(16, 8, 10, 5);
+            ctx.fillRect(24, 6, 6, 8);
+            ctx.fillRect(16, 20, 10, 5);
+            ctx.fillRect(24, 18, 6, 8);
+            
+            // 两个螺旋丸
+            const r1 = 5 + Math.sin(frame * 0.4) * 1.5;
+            const r2 = 5 + Math.cos(frame * 0.4) * 1.5;
+            
+            [28, 10, 28, 22].forEach((py, i) => {
+                if (i % 2 === 0) return;
+                const px = 28;
+                const size = i === 1 ? r1 : r2;
+                const gradient = ctx.createRadialGradient(px, py, 0, px, py, size);
+                gradient.addColorStop(0, '#fff');
+                gradient.addColorStop(0.3, '#ffff00');
+                gradient.addColorStop(0.6, '#ffd700');
+                gradient.addColorStop(1, 'transparent');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(px, py, size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+        
+        // 小樱
+        function drawSakura(ctx, frame) {
+            // 身体
+            ctx.fillStyle = '#ff1493';
+            ctx.fillRect(-14, 5, 28, 25);
+            // 医疗背心
+            ctx.fillStyle = '#dc143c';
+            ctx.fillRect(-12, 8, 24, 15);
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(-3, 12, 6, 6); // 医疗标志
+            
+            // 裤子
+            ctx.fillStyle = '#ff1493';
+            ctx.fillRect(-14, 30, 28, 10);
+            
+            // 头部
+            ctx.fillStyle = '#ffe4c4';
+            ctx.fillRect(-11, -12, 22, 20);
+            
+            // 粉色长发
+            ctx.fillStyle = '#ff69b4';
+            ctx.beginPath();
+            ctx.moveTo(-13, -12);
+            ctx.lineTo(-16, 15);
+            ctx.lineTo(-10, 8);
+            ctx.lineTo(-8, 20);
+            ctx.lineTo(0, 10);
+            ctx.lineTo(8, 20);
+            ctx.lineTo(10, 8);
+            ctx.lineTo(16, 15);
+            ctx.lineTo(13, -12);
+            ctx.fill();
+            
+            // 额头护额
+            ctx.fillStyle = '#2f4f4f';
+            ctx.fillRect(-12, -8, 24, 5);
+            ctx.fillStyle = '#silver';
+            ctx.fillRect(-8, -7, 16, 3);
+            
+            // 眼睛 (绿色)
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(-8, -1, 5, 4);
+            ctx.fillRect(3, -1, 5, 4);
+            ctx.fillStyle = '#228b22';
+            ctx.fillRect(-6, 0, 3, 2);
+            ctx.fillRect(4, 0, 3, 2);
+            
+            // 拳头 (巨大化特效)
+            const punchSize = Math.sin(frame * 0.1) * 3;
+            ctx.fillStyle = '#ffe4c4';
+            ctx.beginPath();
+            ctx.arc(18, 15, 10 + punchSize, 0, Math.PI * 2);
+            ctx.fill();
+            // 查克拉拳套
+            ctx.fillStyle = 'rgba(255, 105, 180, 0.5)';
+            ctx.beginPath();
+            ctx.arc(18, 15, 12 + punchSize, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // 佐助
+        function drawSasuke(ctx, frame) {
+            // 身体
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(-14, 5, 28, 28);
+            // 紫色腰带
+            ctx.fillStyle = '#4b0082';
+            ctx.fillRect(-14, 20, 28, 6);
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(-3, 21, 6, 4);
+            
+            // 裤子
+            ctx.fillStyle = '#000080';
+            ctx.fillRect(-14, 33, 28, 8);
+            
+            // 头部
+            ctx.fillStyle = '#ffe4c4';
+            ctx.fillRect(-11, -12, 22, 20);
+            
+            // 黑色长发 (遮住左眼)
+            ctx.fillStyle = '#1a1a2a';
+            ctx.beginPath();
+            ctx.moveTo(-12, -12);
+            ctx.lineTo(-8, -15);
+            ctx.lineTo(-4, -12);
+            ctx.lineTo(0, -14);
+            ctx.lineTo(4, -12);
+            ctx.lineTo(8, -15);
+            ctx.lineTo(12, -12);
+            ctx.lineTo(14, 5);
+            ctx.lineTo(10, 8);
+            ctx.lineTo(12, 20);
+            ctx.lineTo(8, 15);
+            ctx.lineTo(6, 8);
+            ctx.lineTo(0, 10);
+            ctx.lineTo(-6, 8);
+            ctx.lineTo(-8, 15);
+            ctx.lineTo(-12, 20);
+            ctx.lineTo(-10, 8);
+            ctx.lineTo(-14, 5);
+            ctx.fill();
+            
+            // 露出的右眼 (写轮眼)
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(2, -2, 6, 5);
+            ctx.fillStyle = '#ff0000';
+            ctx.beginPath();
+            ctx.arc(5, 0.5, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            // 勾玉
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(5, 0.5, 1, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 千鸟准备
+            const chidoriFrame = frame % 40;
+            if (chidoriFrame < 20) {
+                ctx.save();
+                ctx.translate(20, 10);
+                ctx.rotate(frame * 0.5);
+                
+                // 雷电效果
+                ctx.strokeStyle = '#00ffff';
+                ctx.lineWidth = 2;
+                ctx.shadowColor = '#00ffff';
+                ctx.shadowBlur = 10;
+                
+                for (let i = 0; i < 8; i++) {
+                    ctx.rotate(Math.PI / 4);
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(15 + Math.random() * 10, 0);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+            
+            // 手臂
+            ctx.fillStyle = '#ffe4c4';
+            ctx.fillRect(14, 8, 12, 5);
+        }
+        
+        // 卡卡西
+        function drawKakashi(ctx, frame) {
+            // 身体
+            ctx.fillStyle = '#2f4f4f';
+            ctx.fillRect(-15, 5, 30, 28);
+            // 上忍背心
+            ctx.fillStyle = '#1a3a1a';
+            ctx.fillRect(-13, 8, 26, 12);
+            // 口袋
+            ctx.fillStyle = '#2f4f4f';
+            ctx.fillRect(-10, 10, 6, 8);
+            ctx.fillRect(4, 10, 6, 8);
+            
+            // 裤子
+            ctx.fillStyle = '#2f4f4f';
+            ctx.fillRect(-15, 33, 30, 8);
+            
+            // 头部
+            ctx.fillStyle = '#ffe4c4';
+            ctx.fillRect(-11, -12, 22, 18);
+            
+            // 白发 (刺蝟头)
+            ctx.fillStyle = '#f0f0f0';
+            for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 6) {
+                const hx = Math.cos(angle) * 14;
+                const hy = Math.sin(angle) * 10 - 12;
+                ctx.beginPath();
+                ctx.moveTo(0, -12);
+                ctx.lineTo(hx, hy - 5);
+                ctx.lineTo(hx * 0.7, -12);
+                ctx.fill();
+            }
+            
+            // 面罩
+            ctx.fillStyle = '#4169e1';
+            ctx.fillRect(-11, 0, 22, 12);
+            
+            // 护额 (遮住左眼/写轮眼)
+            ctx.fillStyle = '#2f4f4f';
+            ctx.fillRect(-12, -8, 24, 6);
+            ctx.fillStyle = '#silver';
+            ctx.fillRect(-8, -7, 16, 4);
+            // 木叶标志
+            ctx.fillStyle = '#228b22';
+            ctx.beginPath();
+            ctx.arc(0, -5, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 右眼
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(2, -3, 5, 4);
+            ctx.fillStyle = '#4169e1';
+            ctx.fillRect(3.5, -2, 2, 2);
+            
+            // 雷切
+            if (frame % 50 < 25) {
+                ctx.save();
+                ctx.translate(22, 12);
+                
+                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, 25);
+                gradient.addColorStop(0, '#fff');
+                gradient.addColorStop(0.2, '#00ffff');
+                gradient.addColorStop(0.5, '#0080ff');
+                gradient.addColorStop(1, 'transparent');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, 20, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 雷电纹理
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                for (let i = 0; i < 6; i++) {
+                    const angle = (frame * 0.3 + i * 60) * Math.PI / 180;
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(Math.cos(angle) * 18, Math.sin(angle) * 18);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+        }
+        
+        // 小李
+        function drawLee(ctx, frame) {
+            const stance = Math.abs(Math.sin(frame * 0.15)) * 5;
+            
+            // 身体 (绿色紧身衣)
+            ctx.fillStyle = '#228b22';
+            ctx.fillRect(-13, 5, 26, 30);
+            
+            // 护甲
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(-10, 15, 20, 8);
+            ctx.fillStyle = '#228b22';
+            ctx.fillRect(-8, 17, 16, 4);
+            
+            // 绷带
+            ctx.fillStyle = '#f5deb3';
+            ctx.fillRect(-14, 25, 4, 10);
+            ctx.fillRect(10, 25, 4, 10);
+            
+            // 头部
+            ctx.fillStyle = '#ffe4c4';
+            ctx.fillRect(-10, -12, 20, 20);
+            
+            // 黑色西瓜头
+            ctx.fillStyle = '#1a1a1a';
+            ctx.beginPath();
+            ctx.arc(0, -8, 12, Math.PI, 0);
+            ctx.fill();
+            // 鬓角
+            ctx.fillRect(-11, -8, 3, 10);
+            ctx.fillRect(8, -8, 3, 10);
+            
+            // 浓眉 (标志性)
+            ctx.fillStyle = '#000';
+            ctx.fillRect(-8, -3, 5, 2);
+            ctx.fillRect(3, -3, 5, 2);
+            
+            // 眼睛 (热血)
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(-7, 0, 4, 4);
+            ctx.fillRect(3, 0, 4, 4);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(-6, 1, 2, 2);
+            ctx.fillRect(4, 1, 2, 2);
+            
+            // 八门遁甲姿势 (战斗姿态)
+            ctx.fillStyle = '#ffe4c4';
+            // 左拳
+            ctx.beginPath();
+            ctx.arc(-20, 15 + stance, 8, 0, Math.PI * 2);
+            ctx.fill();
+            // 右拳
+            ctx.beginPath();
+            ctx.arc(20, 15 - stance, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 绿色查克拉 (八门)
+            if (frame % 30 < 15) {
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 2;
+                ctx.shadowColor = '#00ff00';
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(0, 15, 25 + stance, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+        }
+        
+        // 雏田
+        function drawHinata(ctx, frame) {
+            // 身体
+            ctx.fillStyle = '#4169e1';
+            ctx.fillRect(-14, 5, 28, 28);
+            // 白色短背心
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(-12, 8, 24, 12);
+            ctx.fillStyle = '#4169e1';
+            ctx.fillRect(-10, 12, 20, 4);
+            
+            // 裤子
+            ctx.fillStyle = '#4169e1';
+            ctx.fillRect(-14, 33, 28, 8);
+            
+            // 头部
+            ctx.fillStyle = '#ffe4c4';
+            ctx.fillRect(-11, -12, 22, 20);
+            
+            // 蓝紫色长发
+            ctx.fillStyle = '#6a5acd';
+            ctx.beginPath();
+            ctx.moveTo(-12, -12);
+            ctx.lineTo(-16, 15);
+            ctx.lineTo(-10, 10);
+            ctx.lineTo(-8, 25);
+            ctx.lineTo(0, 15);
+            ctx.lineTo(8, 25);
+            ctx.lineTo(10, 10);
+            ctx.lineTo(16, 15);
+            ctx.lineTo(12, -12);
+            ctx.fill();
+            
+            // 白眼 (标志性)
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(-9, -2, 6, 5);
+            ctx.fillRect(3, -2, 6, 5);
+            // 白瞳 (淡紫色)
+            ctx.fillStyle = '#e6e6fa';
+            ctx.beginPath();
+            ctx.arc(-6, 0.5, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(6, 0.5, 2, 0, Math.PI * 2);
+            ctx.fill();
+            // 瞳孔 (几乎看不见)
+            ctx.fillStyle = '#d8bfd8';
+            ctx.beginPath();
+            ctx.arc(-6, 0.5, 0.8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(6, 0.5, 0.8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 柔拳姿势
+            ctx.fillStyle = '#ffe4c4';
+            ctx.fillRect(15, 8, 10, 4);
+            ctx.fillRect(22, 6, 6, 8);
+            
+            // 八卦掌特效
+            const trigramFrame = frame % 60;
+            if (trigramFrame < 30) {
+                ctx.save();
+                ctx.translate(25, 10);
+                ctx.rotate(frame * 0.1);
+                
+                ctx.strokeStyle = '#e6e6fa';
+                ctx.lineWidth = 1;
+                ctx.globalAlpha = 0.6;
+                
+                // 八卦图案
+                for (let i = 0; i < 8; i++) {
+                    ctx.rotate(Math.PI / 4);
+                    ctx.beginPath();
+                    ctx.moveTo(10, 0);
+                    ctx.lineTo(18, 0);
+                    ctx.stroke();
+                }
+                
+                ctx.beginPath();
+                ctx.arc(0, 0, 12, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                ctx.restore();
+            }
+        }
+        
+        // 我爱罗
+        function drawGaara(ctx, frame) {
+            // 砂之铠甲
+            ctx.fillStyle = '#c2b280';
+            ctx.fillRect(-16, 5, 32, 30);
+            // 砂纹理
+            ctx.fillStyle = '#d4c4a8';
+            for (let i = 0; i < 5; i++) {
+                for (let j = 0; j < 4; j++) {
+                    ctx.fillRect(-14 + i * 6, 7 + j * 7, 3, 3);
+                }
+            }
+            
+            // 红色葫芦 (背上)
+            ctx.fillStyle = '#8b0000';
+            ctx.beginPath();
+            ctx.ellipse(12, 5, 8, 15, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#a52a2a';
+            ctx.beginPath();
+            ctx.ellipse(12, 5, 5, 10, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 头部
+            ctx.fillStyle = '#ffe4c4';
+            ctx.fillRect(-11, -12, 22, 20);
+            
+            // 红棕色头发
+            ctx.fillStyle = '#8b4513';
+            ctx.beginPath();
+            ctx.moveTo(-12, -12);
+            ctx.lineTo(-8, -18);
+            ctx.lineTo(-4, -12);
+            ctx.lineTo(0, -16);
+            ctx.lineTo(4, -12);
+            ctx.lineTo(8, -18);
+            ctx.lineTo(12, -12);
+            ctx.lineTo(10, 8);
+            ctx.lineTo(0, 5);
+            ctx.lineTo(-10, 8);
+            ctx.fill();
+            
+            // 黑眼圈 ( sleepless )
+            ctx.fillStyle = '#4a4a4a';
+            ctx.fillRect(-9, -2, 7, 3);
+            ctx.fillRect(2, -2, 7, 3);
+            
+            // 眼睛 (淡绿色)
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(-8, -1, 5, 3);
+            ctx.fillRect(3, -1, 5, 3);
+            ctx.fillStyle = '#556b2f';
+            ctx.fillRect(-6, 0, 3, 2);
+            ctx.fillRect(4, 0, 3, 2);
+            
+            // 额头爱字
+            ctx.fillStyle = '#000';
+            ctx.font = '8px serif';
+            ctx.fillText('愛', -4, -5);
+            
+            // 砂子攻击
+            if (frame % 70 < 35) {
+                ctx.fillStyle = '#c2b280';
+                for (let i = 0; i < 8; i++) {
+                    const sx = 20 + i * 5;
+                    const sy = 10 + Math.sin(frame * 0.2 + i) * 5;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+        
+        // 白绝
+        function drawZombie(ctx, frame) {
+            const walkOffset = Math.sin(frame * 0.2) * 3;
+            
+            // 身体 (苍白)
+            ctx.fillStyle = '#f5f5dc';
+            ctx.fillRect(-14, 5 + walkOffset, 28, 30);
+            
+            // 植物纹理 (血管/叶脉)
+            ctx.strokeStyle = '#d4d4aa';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, 5);
+            ctx.lineTo(0, 35);
+            ctx.moveTo(-10, 15);
+            ctx.lineTo(10, 15);
+            ctx.moveTo(-8, 25);
+            ctx.lineTo(8, 25);
+            ctx.stroke();
+            
+            // 头部 (螺旋脸)
+            ctx.fillStyle = '#f5f5dc';
+            ctx.fillRect(-12, -15, 24, 22);
+            
+            // 标志性螺旋图案
+            ctx.strokeStyle = '#2f4f4f';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            const spiralCenter = { x: 0, y: -4 };
+            for (let i = 0; i < 20; i++) {
+                const angle = i * 0.5;
+                const radius = 2 + i * 0.4;
+                const x = spiralCenter.x + Math.cos(angle) * radius;
+                const y = spiralCenter.y + Math.sin(angle) * radius;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            
+            // 黄色眼睛
+            ctx.fillStyle = '#ffff00';
+            ctx.fillRect(-8, -10, 4, 3);
+            ctx.fillRect(4, -10, 4, 3);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(-7, -9, 2, 2);
+            ctx.fillRect(5, -9, 2, 2);
+            
+            // 植物特征 (头顶叶子)
+            ctx.fillStyle = '#228b22';
+            ctx.beginPath();
+            ctx.ellipse(-8, -18, 4, 8, -0.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(8, -16, 3, 6, 0.5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 手臂 (伸展)
+            ctx.fillStyle = '#f5f5dc';
+            ctx.fillRect(-25, 10 + walkOffset * 0.5, 12, 6);
+            ctx.fillRect(13, 10 - walkOffset * 0.5, 12, 6);
+            
+            // 手部 (爪子)
+            ctx.fillStyle = '#d4d4aa';
+            ctx.fillRect(-28, 8 + walkOffset * 0.5, 5, 10);
+            ctx.fillRect(23, 8 - walkOffset * 0.5, 5, 10);
+        }
+        
+        // 绘制高质量螺旋丸
+        function drawRasengan(ctx, x, y, size = 1, rotation = 0) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(size, size);
+            ctx.rotate(rotation);
+            
+            // 外层查克拉
+            const outerGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, 20);
+            outerGrad.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+            outerGrad.addColorStop(0.3, 'rgba(0, 255, 255, 0.6)');
+            outerGrad.addColorStop(0.6, 'rgba(0, 150, 255, 0.4)');
+            outerGrad.addColorStop(1, 'transparent');
+            ctx.fillStyle = outerGrad;
+            ctx.beginPath();
+            ctx.arc(0, 0, 20, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 中层
+            const midGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, 12);
+            midGrad.addColorStop(0, '#fff');
+            midGrad.addColorStop(0.4, '#80ffff');
+            midGrad.addColorStop(0.8, '#00ccff');
+            midGrad.addColorStop(1, 'transparent');
+            ctx.fillStyle = midGrad;
+            ctx.beginPath();
+            ctx.arc(0, 0, 12, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 内层核心
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(0, 0, 5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 螺旋纹理
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 3; i++) {
+                ctx.save();
+                ctx.rotate((frameCount * 0.1 + i * 2) % (Math.PI * 2));
+                ctx.beginPath();
+                for (let j = 0; j < 15; j++) {
+                    const angle = j * 0.3;
+                    const r = 3 + j * 1.2;
+                    const px = Math.cos(angle) * r;
+                    const py = Math.sin(angle) * r;
+                    if (j === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                ctx.stroke();
+                ctx.restore();
+            }
+            
+            ctx.restore();
+        }
+        
+        // 绘制千鸟
+        function drawChidori(ctx, x, y) {
+            ctx.save();
+            ctx.translate(x, y);
+            
+            // 雷电光晕
+            const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, 30);
+            glow.addColorStop(0, 'rgba(0, 255, 255, 0.8)');
+            glow.addColorStop(0.5, 'rgba(0, 150, 255, 0.4)');
+            glow.addColorStop(1, 'transparent');
+            ctx.fillStyle = glow;
+            ctx.beginPath();
+            ctx.arc(0, 0, 30, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 主干雷电
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 3;
+            ctx.shadowColor = '#00ffff';
+            ctx.shadowBlur = 15;
+            
+            ctx.beginPath();
+            ctx.moveTo(-20, 0);
+            const points = [-10, 0, 10, 20];
+            points.forEach((px, i) => {
+                const py = (Math.random() - 0.5) * (i + 1) * 8;
+                ctx.lineTo(px, py);
+            });
+            ctx.stroke();
+            
+            // 分支雷电
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 5; i++) {
+                ctx.beginPath();
+                const sx = Math.random() * 30 - 10;
+                ctx.moveTo(sx, 0);
+                ctx.lineTo(sx + (Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20);
+                ctx.stroke();
+            }
+            
+            ctx.restore();
+        }
+        
+        // 绘制查克拉球 - 立体效果，大球，缓缓掉落不弹跳
+        function drawChakraOrb(ctx, x, y, scale = 1) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            
+            // 落地阴影
+            const groundY = 35;
+            const height = Math.max(0, groundY - y);
+            const shadowScale = 1 - (height / 100);
+            const shadowAlpha = 0.3 * shadowScale;
+            
+            ctx.fillStyle = `rgba(0, 0, 0, ${shadowAlpha})`;
+            ctx.beginPath();
+            ctx.ellipse(0, groundY - y, 25 * shadowScale, 8 * shadowScale, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 球体光晕 (外层)
+            const auraGrad = ctx.createRadialGradient(-5, -5, 0, 0, 0, 35);
+            auraGrad.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+            auraGrad.addColorStop(0.2, 'rgba(0, 255, 255, 0.7)');
+            auraGrad.addColorStop(0.5, 'rgba(0, 200, 255, 0.5)');
+            auraGrad.addColorStop(0.8, 'rgba(0, 150, 255, 0.3)');
+            auraGrad.addColorStop(1, 'transparent');
+            ctx.fillStyle = auraGrad;
+            ctx.beginPath();
+            ctx.arc(0, 0, 35, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 球体主体 (立体效果)
+            const sphereGrad = ctx.createRadialGradient(-8, -8, 0, 0, 0, 22);
+            sphereGrad.addColorStop(0, '#ffffff');
+            sphereGrad.addColorStop(0.3, '#80ffff');
+            sphereGrad.addColorStop(0.6, '#00ccff');
+            sphereGrad.addColorStop(0.9, '#0080ff');
+            sphereGrad.addColorStop(1, '#004080');
+            ctx.fillStyle = sphereGrad;
+            ctx.beginPath();
+            ctx.arc(0, 0, 22, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 高光
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.beginPath();
+            ctx.ellipse(-8, -8, 6, 4, -0.5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 内部查克拉流动
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 0, 15, frameCount * 0.05, frameCount * 0.05 + Math.PI * 1.5);
+            ctx.stroke();
+            
+            // 符号
+            ctx.fillStyle = 'rgba(0, 50, 100, 0.8)';
+            ctx.font = 'bold 16px serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('查', 0, 1);
+            
+            ctx.restore();
+        }
+        
+        // 绘制忍者推车 (替代割草机)
+        function drawNinjaCart(ctx, x, y, row, active) {
+            ctx.save();
+            ctx.translate(x, y);
+            
+            if (!active) {
+                // 静止状态
+                ctx.globalAlpha = 0.5;
+            }
+            
+            // 阴影
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(0, 25, 35, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 车体 (木制忍者推车)
+            ctx.fillStyle = '#8b4513';
+            ctx.fillRect(-40, -15, 80, 35);
+            
+            // 车体纹理
+            ctx.fillStyle = '#a0522d';
+            ctx.fillRect(-35, -10, 70, 5);
+            ctx.fillRect(-35, 0, 70, 5);
+            ctx.fillRect(-35, 10, 70, 5);
+            
+            // 金属包边
+            ctx.fillStyle = '#silver';
+            ctx.fillRect(-42, -17, 4, 39);
+            ctx.fillRect(38, -17, 4, 39);
+            ctx.fillRect(-40, -17, 80, 4);
+            ctx.fillRect(-40, 18, 80, 4);
+            
+            // 轮子
+            [-25, 25].forEach(wx => {
+                ctx.fillStyle = '#2f4f4f';
+                ctx.beginPath();
+                ctx.arc(wx, 22, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#silver';
+                ctx.beginPath();
+                ctx.arc(wx, 22, 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#2f4f4f';
+                ctx.beginPath();
+                ctx.arc(wx, 22, 2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            // 起爆符标志
+            ctx.fillStyle = '#ff0000';
+            ctx.beginPath();
+            ctx.moveTo(0, -5);
+            ctx.lineTo(5, 5);
+            ctx.lineTo(-5, 5);
+            ctx.fill();
+            
+            // 火焰特效 (激活状态)
+            if (active) {
+                const flameHeight = 15 + Math.sin(frameCount * 0.3) * 5;
+                const gradient = ctx.createLinearGradient(-40, 0, -60, 0);
+                gradient.addColorStop(0, '#ff6600');
+                gradient.addColorStop(0.5, '#ff0000');
+                gradient.addColorStop(1, 'transparent');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.moveTo(-40, -10);
+                ctx.lineTo(-60 - Math.random() * 10, 0);
+                ctx.lineTo(-40, 10);
+                ctx.fill();
+            }
+            
+            ctx.restore();
+        }
+        
+        // 植物类
+        class Plant {
+            constructor(col, row, cardData) {
+                this.col = col;
+                this.row = row;
+                this.x = GRID_OFFSET_X + col * CELL_WIDTH + CELL_WIDTH / 2;
+                this.y = GRID_OFFSET_Y + row * CELL_HEIGHT + CELL_HEIGHT / 2;
+                this.type = cardData.id;
+                this.cardData = cardData;
+                this.health = cardData.health || 150;
+                this.maxHealth = this.health;
+                this.lastShot = 0;
+                this.lastAttack = 0;
+                this.frame = Math.floor(Math.random() * 100);
+                this.direction = 1;
+            }
+            
+            update() {
+                this.frame++;
+                
+                if (this.cardData.type.includes('shooter')) {
+                    const hasZombie = zombies.some(z => 
+                        z.row === this.row && z.x > this.x && !z.dead
+                    );
+                    
+                    if (hasZombie && Date.now() - this.lastShot > this.cardData.shootSpeed) {
+                        this.shoot();
+                        this.lastShot = Date.now();
+                    }
+                } else if (this.cardData.type === 'melee') {
+                    const target = zombies.find(z => 
+                        z.row === this.row && Math.abs(z.x - this.x) < 70 && !z.dead
+                    );
+      
